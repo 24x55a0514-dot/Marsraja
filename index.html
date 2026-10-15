@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scroll Animation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      background: #000;
+    }
+
+    body {
+      background: #000;
+      height: calc(300 * 5px + 100vh);
+      /* 300 frames × 5px of scroll per frame */
+    }
+
+    #canvas-container {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100vh;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="anim-canvas"></canvas>
+  </div>
+
+  <script>
+    const TOTAL_FRAMES = 300;
+    const SCROLL_PER_FRAME = 5; // px of scroll per frame
+    const FRAME_DIR = './ezgif-73f80200a9bfa22d-jpg/';
+
+    const canvas = document.getElementById('anim-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ── Preload all frames ──────────────────────────────────────────
+    const images = new Array(TOTAL_FRAMES);
+    let loadedCount = 0;
+    let firstImageLoaded = false;
+
+    function padNum(n) {
+      return String(n).padStart(3, '0');
+    }
+
+    function drawFrame(img) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const cw = canvas.width;
+      const ch = canvas.height;
+
+      // Maintain aspect ratio (contain)
+      const scale = Math.min(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (cw - dw) / 2;
+      const dy = (ch - dh) / 2;
+
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    function setCanvasSize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      // Redraw current frame after resize
+      const frame = currentFrame();
+      if (images[frame] && images[frame].complete) {
+        drawFrame(images[frame]);
+      }
+    }
+
+    function currentFrame() {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const maxScroll = TOTAL_FRAMES * SCROLL_PER_FRAME;
+      const progress = Math.min(scrollTop / maxScroll, 1);
+      return Math.min(
+        Math.floor(progress * (TOTAL_FRAMES - 1)),
+        TOTAL_FRAMES - 1
+      );
+    }
+
+    // Smooth rendering using requestAnimationFrame
+    let rafPending = false;
+    let lastFrame = -1;
+
+    function onScroll() {
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(render);
+      }
+    }
+
+    function render() {
+      rafPending = false;
+      const frame = currentFrame();
+      if (frame !== lastFrame) {
+        lastFrame = frame;
+        const img = images[frame];
+        if (img && img.complete) {
+          drawFrame(img);
+        }
+      }
+    }
+
+    // ── Load images ─────────────────────────────────────────────────
+    setCanvasSize();
+    window.addEventListener('resize', setCanvasSize);
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    for (let i = 0; i < TOTAL_FRAMES; i++) {
+      const img = new Image();
+      const num = padNum(i + 1); // frames are 001..300
+      img.src = `${FRAME_DIR}ezgif-frame-${num}.jpg`;
+
+      img.onload = () => {
+        loadedCount++;
+        if (!firstImageLoaded && i === 0) {
+          firstImageLoaded = true;
+          drawFrame(img); // show frame 1 immediately
+        }
+      };
+
+      images[i] = img;
+    }
+  </script>
+</body>
+</html>
